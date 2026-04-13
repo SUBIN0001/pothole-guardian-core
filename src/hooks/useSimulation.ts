@@ -164,7 +164,7 @@ export const useSimulation = () => {
               setDetectionCount(c => c + 1);
               const conf = 0.75 + Math.random() * 0.2;
               setDetectionEvents(evts => [
-                { id: eventIdRef.current++, timestamp: Date.now(), type: 'fused', confidence: conf, severity: p.severity, lat: p.lat, lng: p.lng, distance: d },
+                { id: eventIdRef.current++, timestamp: Date.now(), type: 'fused' as const, confidence: conf, severity: p.severity, lat: p.lat, lng: p.lng, distance: d },
                 ...evts,
               ].slice(0, 50));
               return { ...p, detected: true, confidence: conf };
