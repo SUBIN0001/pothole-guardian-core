@@ -23,6 +23,11 @@ export interface SensorData {
   gpsLat: number;
   gpsLng: number;
   gpsSpeed: number;
+  gpsHeading: number;
+  gpsAltitude: number;
+  gpsHdop: number;
+  gpsSatellites: number;
+  gpsFixType: '2D' | '3D' | 'DGPS' | 'NO FIX';
   ambientLux: number;
   rainProbability: number;
   cameraFps: number;
@@ -48,6 +53,10 @@ export interface DetectionEvent {
 const BASE_LAT = 12.9716;
 const BASE_LNG = 77.5946;
 
+// Meters per degree (approximate at equator-ish latitudes)
+const METERS_PER_DEG_LAT = 111320;
+const METERS_PER_DEG_LNG = 111320 * Math.cos((BASE_LAT * Math.PI) / 180);
+
 export const useSimulation = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [environment, setEnvironment] = useState<'day' | 'night' | 'rain'>('day');
@@ -57,10 +66,16 @@ export const useSimulation = () => {
   const [alertLevel, setAlertLevel] = useState<'safe' | 'caution' | 'danger'>('safe');
   const [detectionCount, setDetectionCount] = useState(0);
   const [carX, setCarX] = useState(50);
+
+  // GPS path state — heading in degrees (0=North, 90=East)
+  const gpsPathRef = useRef({ lat: BASE_LAT, lng: BASE_LNG, heading: 45, altitude: 920 });
+
   const [sensorData, setSensorData] = useState<SensorData>({
     imuAccelX: 0, imuAccelY: 0, imuAccelZ: 9.81,
     imuGyroX: 0, imuGyroY: 0, imuGyroZ: 0,
     gpsLat: BASE_LAT, gpsLng: BASE_LNG, gpsSpeed: 0,
+    gpsHeading: 45, gpsAltitude: 920,
+    gpsHdop: 0.9, gpsSatellites: 12, gpsFixType: '3D',
     ambientLux: 500, rainProbability: 0, cameraFps: 30, imuHz: 100,
     visionConfidence: 0, imuConfidence: 0, fusedConfidence: 0,
     fusionWeight: { vision: 0.6, imu: 0.4 },
@@ -103,8 +118,8 @@ export const useSimulation = () => {
       detected: false,
       confidence: 0,
       severity,
-      lat: BASE_LAT + (Math.random() - 0.5) * 0.01,
-      lng: BASE_LNG + (Math.random() - 0.5) * 0.01,
+      lat: gpsPathRef.current.lat + (Math.random() - 0.5) * 0.0002,
+      lng: gpsPathRef.current.lng + (Math.random() - 0.5) * 0.0002,
     };
     setPotholes(prev => [...prev, pothole]);
   }, [environment]);
@@ -118,6 +133,24 @@ export const useSimulation = () => {
       const visionW = environment === 'rain' ? 0.3 : environment === 'night' ? 0.4 : 0.6;
       const imuW = 1 - visionW;
 
+      // Advance GPS position along heading (100ms tick, speed in km/h → m/s)
+      const gps = gpsPathRef.current;
+      const speedMs = speed / 3.6;
+      const dtSec = 0.1;
+      const distM = speedMs * dtSec;
+      // Slight heading drift to simulate road curves
+      gps.heading += (Math.random() - 0.5) * 1.5;
+      const headingRad = (gps.heading * Math.PI) / 180;
+      gps.lat += (distM * Math.cos(headingRad)) / METERS_PER_DEG_LAT;
+      gps.lng += (distM * Math.sin(headingRad)) / METERS_PER_DEG_LNG;
+      gps.altitude += (Math.random() - 0.5) * 0.3;
+
+      // GPS accuracy: DGPS-quality noise (~1-2m), HDOP varies slightly
+      const hdop = 0.8 + Math.random() * 0.4;
+      const posNoise = (hdop * 1.5) / METERS_PER_DEG_LAT; // ~1-3m in degrees
+      const satellites = Math.floor(10 + Math.random() * 4);
+      const fixType: SensorData['gpsFixType'] = hdop < 1.0 ? 'DGPS' : hdop < 1.5 ? '3D' : '2D';
+
       setSensorData({
         imuAccelX: (Math.random() - 0.5) * 2 + (hasNearPothole ? (Math.random() - 0.5) * 8 : 0),
         imuAccelY: (Math.random() - 0.5) * 1.5,
@@ -125,9 +158,14 @@ export const useSimulation = () => {
         imuGyroX: (Math.random() - 0.5) * 5 + (hasNearPothole ? (Math.random() - 0.5) * 15 : 0),
         imuGyroY: (Math.random() - 0.5) * 3,
         imuGyroZ: (Math.random() - 0.5) * 2,
-        gpsLat: BASE_LAT + (Math.random() - 0.5) * 0.001,
-        gpsLng: BASE_LNG + (Math.random() - 0.5) * 0.001,
-        gpsSpeed: speed + (Math.random() - 0.5) * 5,
+        gpsLat: gps.lat + (Math.random() - 0.5) * posNoise,
+        gpsLng: gps.lng + (Math.random() - 0.5) * posNoise,
+        gpsSpeed: speed + (Math.random() - 0.5) * 1.5,
+        gpsHeading: gps.heading + (Math.random() - 0.5) * 0.5,
+        gpsAltitude: gps.altitude,
+        gpsHdop: hdop,
+        gpsSatellites: satellites,
+        gpsFixType: fixType,
         ambientLux: environment === 'night' ? 10 + Math.random() * 30 : environment === 'rain' ? 200 + Math.random() * 200 : 500 + Math.random() * 500,
         rainProbability: environment === 'rain' ? 0.7 + Math.random() * 0.3 : Math.random() * 0.1,
         cameraFps: 28 + Math.random() * 4,
@@ -204,6 +242,7 @@ export const useSimulation = () => {
     } else {
       setDetectionCount(0);
       setDetectionEvents([]);
+      gpsPathRef.current = { lat: BASE_LAT, lng: BASE_LNG, heading: 45, altitude: 920 };
       setIsRunning(true);
     }
   };
