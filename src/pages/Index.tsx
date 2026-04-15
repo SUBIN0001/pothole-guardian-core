@@ -106,7 +106,7 @@ const Index = () => {
             </div>
             <div className="p-2 rounded-lg hud-border text-center">
               <p className="font-mono-tech text-[9px] text-muted-foreground">DISTANCE</p>
-              <p className="font-orbitron text-sm text-primary">{sim.isRunning ? `${sim.distance.toFixed(0)}cm` : '---'}</p>
+              <p className="font-orbitron text-sm text-primary">{sim.isRunning ? `${(sim.distance / 100).toFixed(1)}m` : '---'}</p>
             </div>
             <div className="p-2 rounded-lg hud-border text-center">
               <p className="font-mono-tech text-[9px] text-muted-foreground">FUSED</p>
