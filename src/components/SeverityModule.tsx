@@ -16,9 +16,9 @@ const SeverityModule = ({ sensorData, detectionEvents, alertLevel, distance, spe
   const lowCount = detectionEvents.filter(e => e.severity === 'low').length;
 
   const alertMessage = alertLevel === 'danger'
-    ? `Severe pothole ahead in ${(distance / 100).toFixed(1)}m`
+    ? `Severe pothole ahead in ${distance.toFixed(0)}m`
     : alertLevel === 'caution'
-    ? `Pothole approaching — ${(distance / 100).toFixed(1)}m`
+    ? `Pothole approaching — ${distance.toFixed(0)}m`
     : 'Road clear';
 
   return (

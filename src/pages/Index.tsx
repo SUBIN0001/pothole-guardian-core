@@ -31,8 +31,8 @@ const Index = () => {
   // Alert beeping
   useEffect(() => {
     if (!sim.isRunning) { stopAlertBeeping(); return; }
-    if (sim.distance < 50) startAlertBeeping('high');
-    else if (sim.distance < 100) startAlertBeeping('medium');
+    if (sim.distance < 200) startAlertBeeping('high');
+    else if (sim.distance < 350) startAlertBeeping('medium');
     else stopAlertBeeping();
     return () => stopAlertBeeping();
   }, [sim.distance, sim.isRunning, startAlertBeeping, stopAlertBeeping]);
@@ -106,7 +106,7 @@ const Index = () => {
             </div>
             <div className="p-2 rounded-lg hud-border text-center">
               <p className="font-mono-tech text-[9px] text-muted-foreground">DISTANCE</p>
-              <p className="font-orbitron text-sm text-primary">{sim.isRunning ? `${(sim.distance / 100).toFixed(1)}m` : '---'}</p>
+              <p className="font-orbitron text-sm text-primary">{sim.isRunning ? `${sim.distance.toFixed(0)}m` : '---'}</p>
             </div>
             <div className="p-2 rounded-lg hud-border text-center">
               <p className="font-mono-tech text-[9px] text-muted-foreground">FUSED</p>
