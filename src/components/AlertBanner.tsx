@@ -22,7 +22,7 @@ const AlertBanner = ({ alertLevel, distance, isRunning }: AlertBannerProps) => {
             {alertLevel === 'danger' ? 'POTHOLE DETECTED!' : 'POTHOLE APPROACHING'}
           </p>
           <p className="font-mono-tech text-xs opacity-70">
-            Distance: {(distance / 100).toFixed(1)} m — {alertLevel === 'danger' ? 'BRAKE / AVOID' : 'SLOW DOWN'}
+            Distance: {distance.toFixed(0)} m — {alertLevel === 'danger' ? 'BRAKE / AVOID' : 'SLOW DOWN'}
           </p>
         </div>
         <span className="text-xl">{alertLevel === 'danger' ? '🚨' : '⚠️'}</span>

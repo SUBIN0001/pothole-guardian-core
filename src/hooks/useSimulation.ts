@@ -62,7 +62,7 @@ export const useSimulation = () => {
   const [environment, setEnvironment] = useState<'day' | 'night' | 'rain'>('day');
   const [speed, setSpeed] = useState(40);
   const [potholes, setPotholes] = useState<Pothole[]>([]);
-  const [distance, setDistance] = useState(200);
+  const [distance, setDistance] = useState(500);
   const [alertLevel, setAlertLevel] = useState<'safe' | 'caution' | 'danger'>('safe');
   const [detectionCount, setDetectionCount] = useState(0);
   const [carX, setCarX] = useState(50);
@@ -128,7 +128,7 @@ export const useSimulation = () => {
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => {
-      const hasNearPothole = distance < 100;
+      const hasNearPothole = distance < 300;
       const envFactor = environment === 'rain' ? 0.7 : environment === 'night' ? 0.5 : 1.0;
       const visionW = environment === 'rain' ? 0.3 : environment === 'night' ? 0.4 : 0.6;
       const imuW = 1 - visionW;
@@ -189,16 +189,19 @@ export const useSimulation = () => {
       setPotholes(prev => {
         const moveSpeed = speed / 20;
         const updated = prev.map(p => ({ ...p, y: p.y + moveSpeed })).filter(p => p.y < 110);
-        let minDist = 200;
+        let minDist = 500;
         const cx = carXRef.current;
         const laneMin = cx - CAR_HALF_WIDTH;
         const laneMax = cx + CAR_HALF_WIDTH;
         const withDetection = updated.map(p => {
           const isInCarPath = p.x >= laneMin && p.x <= laneMax;
-          if (isInCarPath && p.y > 55 && p.y < 90) {
-            const d = Math.max(5, ((90 - p.y) / 35) * 200);
+          // Severity-based max detection range: high=500m, medium=350m, low=200m
+          const maxRange = p.severity === 'high' ? 500 : p.severity === 'medium' ? 350 : 200;
+          const detectStart = 40; // y position where detection begins (far ahead)
+          if (isInCarPath && p.y > detectStart && p.y < 90) {
+            const d = Math.max(5, ((90 - p.y) / (90 - detectStart)) * maxRange);
             if (d < minDist) minDist = d;
-            if (!p.detected && p.y > 55) {
+            if (!p.detected && p.y > detectStart) {
               setDetectionCount(c => c + 1);
               const conf = 0.75 + Math.random() * 0.2;
               setDetectionEvents(evts => [
@@ -207,9 +210,9 @@ export const useSimulation = () => {
               ].slice(0, 50));
               return { ...p, detected: true, confidence: conf };
             }
-            if (p.y > 55) return { ...p, detected: true };
+            if (p.y > detectStart) return { ...p, detected: true };
           }
-          return { ...p, detected: isInCarPath && p.y > 55 && p.y < 90 ? p.detected : false };
+          return { ...p, detected: isInCarPath && p.y > detectStart && p.y < 90 ? p.detected : false };
         });
         setDistance(minDist);
         return withDetection;
@@ -228,8 +231,8 @@ export const useSimulation = () => {
   // Alert level
   useEffect(() => {
     if (!isRunning) { setAlertLevel('safe'); return; }
-    if (distance < 50) setAlertLevel('danger');
-    else if (distance < 100) setAlertLevel('caution');
+    if (distance < 200) setAlertLevel('danger');
+    else if (distance < 350) setAlertLevel('caution');
     else setAlertLevel('safe');
   }, [distance, isRunning]);
 
@@ -237,7 +240,7 @@ export const useSimulation = () => {
     if (isRunning) {
       setIsRunning(false);
       setPotholes([]);
-      setDistance(200);
+      setDistance(500);
       setAlertLevel('safe');
     } else {
       setDetectionCount(0);
