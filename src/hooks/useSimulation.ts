@@ -217,7 +217,6 @@ export const useSimulation = () => {
         setDistance(minDist);
         return withDetection;
       });
-      });
     }, 50);
     return () => clearInterval(interval);
   }, [isRunning, speed]);
